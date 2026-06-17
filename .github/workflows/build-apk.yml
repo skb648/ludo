@@ -39,32 +39,28 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
-        working-directory: LudoLegends
 
       - name: Verify project structure
         run: |
           echo "=== Root listing ==="
           ls -la
-          echo "=== LudoLegends listing ==="
-          ls -la LudoLegends/
           echo "=== App build.gradle.kts exists ==="
-          test -f LudoLegends/app/build.gradle.kts && echo "YES" || echo "NO"
+          test -f app/build.gradle.kts && echo "YES" || echo "NO"
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
-        working-directory: LudoLegends
         env:
           GRADLE_OPTS: "-Xmx4g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
 
       - name: List built APK
         run: |
-          find LudoLegends/app/build/outputs/apk -name "*.apk" -exec ls -la {} \;
+          find app/build/outputs/apk -name "*.apk" -exec ls -la {} \;
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ludo-legends-debug-apk
-          path: LudoLegends/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -74,7 +70,7 @@ jobs:
         with:
           name: build-reports
           path: |
-            LudoLegends/app/build/reports
-            LudoLegends/build/reports
+            app/build/reports
+            build/reports
           if-no-files-found: ignore
           retention-days: 7
