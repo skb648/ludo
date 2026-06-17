@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ludo Legends</string>
+    <string name="app_tagline">Roll. Strategize. Conquer.</string>
+
+    <!-- Lobby -->
+    <string name="lobby_title">LUDO LEGENDS</string>
+    <string name="lobby_subtitle">Roll. Strategize. Conquer.</string>
+    <string name="lobby_local_play">Local Pass &amp; Play</string>
+    <string name="lobby_local_play_desc">Play with friends on the same device</string>
+    <string name="lobby_friends">Play With Friends</string>
+    <string name="lobby_friends_desc">Create a private room and invite friends</string>
+    <string name="lobby_online">Online Multiplayer</string>
+    <string name="lobby_online_desc">Compete with players worldwide</string>
+
+    <!-- Setup sheet -->
+    <string name="setup_title">New Game Setup</string>
+    <string name="setup_mode_standard">Standard Ludo</string>
+    <string name="setup_mode_team">2v2 Team Mode</string>
+    <string name="setup_players_label">Number of Players</string>
+    <string name="setup_start_match">Start Match</string>
+
+    <!-- Game HUD -->
+    <string name="hud_your_turn">Your Turn</string>
+    <string name="hud_enter_dice">Enter dice number (1–6) to move</string>
+    <string name="hud_bonus_roll">Bonus Roll!</string>
+
+    <!-- Footer nav -->
+    <string name="nav_menu">Menu</string>
+    <string name="nav_undo">Undo</string>
+    <string name="nav_redo">Redo</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Notifications -->
+    <string name="notif_three_sixes">Three consecutive sixes! Turn forfeited.</string>
+    <string name="notif_capture">%1$s captured %2$s! Bonus roll granted.</string>
+    <string name="notif_unlock">Rolled a 6! Pawn unlocked.</string>
+    <string name="notif_blocked">Move blocked — exact roll required.</string>
+    <string name="notif_home">Token reached home!</string>
+    <string name="notif_winner">%1$s wins the match!</string>
+</resources>
