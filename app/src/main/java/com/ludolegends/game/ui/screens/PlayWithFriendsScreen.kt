@@ -118,7 +118,10 @@ fun PlayWithFriendsScreen(
             contentAlignment = Alignment.Center
         ) {
             val shakeOffset = if (screenShake.active) {
-                Modifier.offset { IntOffset(screenShake.offsetX.toInt(), screenShake.offsetY.toInt()) }
+                Modifier.offset(
+                    x = screenShake.offsetX.toInt().dp,
+                    y = screenShake.offsetY.toInt().dp
+                )
             } else Modifier
             Box(
                 modifier = Modifier

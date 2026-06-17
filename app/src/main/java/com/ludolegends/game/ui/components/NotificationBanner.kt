@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,49 +53,54 @@ fun NotificationBanner(
         exit = slideOutVertically { -it } + fadeOut(),
         modifier = modifier
     ) {
-        if (notification == null) return@AnimatedVisibility
-        val accent = when (notification.type) {
-            GameNotification.NotificationType.THREE_SIXES_BURN -> ActionRed
-            GameNotification.NotificationType.CAPTURE          -> ActionRed
-            GameNotification.NotificationType.UNLOCK           -> GoldBright
-            GameNotification.NotificationType.BONUS_ROLL       -> ActionGreen
-            GameNotification.NotificationType.HOME_REACHED     -> GoldBright
-            GameNotification.NotificationType.WINNER           -> GoldBright
-            GameNotification.NotificationType.BLOCKED_MOVE     -> ActionRed
-            GameNotification.NotificationType.INFO             -> SapphireMid
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-                .drawWithCache {
-                    onDrawBehind {
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(accent.copy(alpha = 0.35f), SapphireMid, SapphireDeep),
-                                center = Offset(size.width / 2f, size.height / 2f),
-                                radius = size.maxDimension
-                            ),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                        )
-                        drawRoundRect(
-                            brush = Brush.horizontalGradient(listOf(accent, GoldBright, accent)),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f),
-                            style = Stroke(width = 1.5f)
-                        )
-                    }
-                }
-        ) {
-            Text(
-                text = notification.message,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.W700,
-                color = Color.White,
-                textAlign = TextAlign.Center,
+        val current = notification
+        if (current == null) {
+            // Empty placeholder — keeps the slot composable even when null.
+            Box(modifier = Modifier.fillMaxWidth())
+        } else {
+            val accent = when (current.type) {
+                GameNotification.NotificationType.THREE_SIXES_BURN -> ActionRed
+                GameNotification.NotificationType.CAPTURE          -> ActionRed
+                GameNotification.NotificationType.UNLOCK           -> GoldBright
+                GameNotification.NotificationType.BONUS_ROLL       -> ActionGreen
+                GameNotification.NotificationType.HOME_REACHED     -> GoldBright
+                GameNotification.NotificationType.WINNER           -> GoldBright
+                GameNotification.NotificationType.BLOCKED_MOVE     -> ActionRed
+                GameNotification.NotificationType.INFO             -> SapphireMid
+            }
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .drawWithCache {
+                        onDrawBehind {
+                            drawRoundRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(accent.copy(alpha = 0.35f), SapphireMid, SapphireDeep),
+                                    center = Offset(size.width / 2f, size.height / 2f),
+                                    radius = size.maxDimension
+                                ),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
+                            )
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(listOf(accent, GoldBright, accent)),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f),
+                                style = Stroke(width = 1.5f)
+                            )
+                        }
+                    }
+            ) {
+                Text(
+                    text = current.message,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.W700,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
@@ -45,7 +46,6 @@ import com.ludolegends.game.ui.theme.SapphireDeep
 import com.ludolegends.game.ui.theme.TextPrimary
 import com.ludolegends.game.ui.theme.TextSecondary
 import com.ludolegends.game.viewmodel.LudoViewModel
-import androidx.compose.foundation.layout.offset as offsetModifier
 
 /**
  * === MODE 1 — STANDARD "LOCAL PASS & PLAY" (100% Ludo King Clone) ===
@@ -114,13 +114,17 @@ fun LocalPlayScreen(
             contentAlignment = Alignment.Center
         ) {
             // Apply screen shake offset to the board
-            val shakeOffset = if (screenShake.active) {
-                offsetModifier { IntOffset(screenShake.offsetX.toInt(), screenShake.offsetY.toInt()) }
-            } else Modifier
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(shakeOffset)
+                    .then(
+                        if (screenShake.active) {
+                            Modifier.offset(
+                                x = screenShake.offsetX.toInt().dp,
+                                y = screenShake.offsetY.toInt().dp
+                            )
+                        } else Modifier
+                    )
             ) {
                 LudoBoard(
                     state = state,

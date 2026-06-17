@@ -127,7 +127,7 @@ fun AnimatedDice3D(
             // Tumble skew — a small rotation-like scale oscillation
             val skew = if (isRolling) {
                 val t = tumbleAnim.value
-                val wobble = kotlin.math.sin(t * kotlin.math.PI * 4) * 0.08f
+                val wobble = (kotlin.math.sin(t.toDouble() * kotlin.math.PI * 4.0) * 0.08).toFloat()
                 1f - wobble
             } else 1f
 

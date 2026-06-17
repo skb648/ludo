@@ -66,8 +66,8 @@ fun GoldTrimBorder(
                             size.height - 2 * (outerW + innerInsetPx)
                         ),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                            (cornerRadius - outerW - innerInsetPx).coerceAtLeast(0f),
-                            (cornerRadius - outerW - innerInsetPx).coerceAtLeast(0f)
+                            (cornerPx - outerW - innerInsetPx).coerceAtLeast(0f),
+                            (cornerPx - outerW - innerInsetPx).coerceAtLeast(0f)
                         ),
                         style = Stroke(width = innerW)
                     )

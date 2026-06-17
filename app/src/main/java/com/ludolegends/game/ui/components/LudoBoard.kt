@@ -156,6 +156,16 @@ private fun computeSelectableCenters(
     return out
 }
 
+/**
+ * Holder for the 4 colored home-triangle sub-paths drawn at the board center.
+ */
+internal data class HomeTriangle(
+    val p1: Offset,
+    val p2: Offset,
+    val p3: Offset,
+    val player: Player
+)
+
 // ============================================================
 // Canvas drawing helpers
 // ============================================================
@@ -376,25 +386,25 @@ private fun DrawScope.drawCenterTriangle(left: Float, top: Float, cellSize: Floa
     val half = cellSize * 1.5f
 
     val triangles = listOf(
-        Triple(
+        HomeTriangle(
             Offset(centerX - half, centerY - half),
             Offset(centerX + half, centerY - half),
             Offset(centerX, centerY),
             Player.RED
         ),
-        Triple(
+        HomeTriangle(
             Offset(centerX + half, centerY - half),
             Offset(centerX + half, centerY + half),
             Offset(centerX, centerY),
             Player.GREEN
         ),
-        Triple(
+        HomeTriangle(
             Offset(centerX + half, centerY + half),
             Offset(centerX - half, centerY + half),
             Offset(centerX, centerY),
             Player.YELLOW
         ),
-        Triple(
+        HomeTriangle(
             Offset(centerX - half, centerY + half),
             Offset(centerX - half, centerY - half),
             Offset(centerX, centerY),
@@ -402,11 +412,11 @@ private fun DrawScope.drawCenterTriangle(left: Float, top: Float, cellSize: Floa
         )
     )
 
-    for ((p1, p2, p3, player) in triangles) {
+    for (t in triangles) {
         val path = Path().apply {
-            moveTo(p1.x, p1.y); lineTo(p2.x, p2.y); lineTo(p3.x, p3.y); close()
+            moveTo(t.p1.x, t.p1.y); lineTo(t.p2.x, t.p2.y); lineTo(t.p3.x, t.p3.y); close()
         }
-        drawPath(path, player.primary.copy(alpha = 0.92f))
+        drawPath(path, t.player.primary.copy(alpha = 0.92f))
         drawPath(path, GoldBright, style = Stroke(width = 1.5f))
     }
     // NOTE: No center jewel circle is drawn here. The four triangles meet

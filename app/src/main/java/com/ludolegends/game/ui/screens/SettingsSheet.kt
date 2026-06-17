@@ -310,12 +310,12 @@ private fun CustomSlider(
             .fillMaxWidth()
             .height(36.dp)
             .pointerInput(Unit) {
-                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                detectHorizontalDragGestures(
                     onDragStart = { offset ->
                         val w = size.width.toFloat()
                         if (w > 0f) onValueChange((offset.x / w).coerceIn(0f, 1f))
                     },
-                    onHorizontalDrag = { change: PointerInputChange, _: Float ->
+                    onHorizontalDrag = { change, _: Float ->
                         val w = size.width.toFloat()
                         if (w > 0f) {
                             val newX = change.position.x
