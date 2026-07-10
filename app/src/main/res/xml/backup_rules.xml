@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Ludo Legends v5.0 — complete source sync · 2026-07-10 -->
-<navigation xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/nav_graph" />

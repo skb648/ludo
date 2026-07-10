@@ -1,77 +1,39 @@
-# Ludo Legends v5.0 — complete source sync · 2026-07-10
-name: Build Debug APK
-
+name: Build Latest Ludo Legends APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
-
 jobs:
-  build:
-    name: Build Debug APK
+  verify-and-build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
+      - name: Verify latest source architecture
+        run: |
+          test -f app/src/main/java/com/ludolegends/game/engine/LudoModels.kt
+          test -f app/src/main/java/com/ludolegends/game/vm/GameViewModel.kt
+          test -f app/src/main/java/com/ludolegends/game/ui/board/LudoBoardCanvas.kt
+          grep -q 'versionName = "6.0.0"' app/build.gradle.kts
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+      - name: Build latest debug APK
+        run: ./gradlew assembleDebug --no-daemon
+      - name: APK identity and checksum
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app/build/outputs/apk/debug/app-debug.apk | head -3
+          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee app/build/outputs/apk/debug/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
         with:
+          name: Ludo-Legends-v6-latest-debug
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Verify project structure
-        run: |
-          echo "=== Root listing ==="
-          ls -la
-          echo "=== App build.gradle.kts exists ==="
-          test -f app/build.gradle.kts && echo "YES" || echo "NO"
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-        env:
-          GRADLE_OPTS: "-Xmx4g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
-
-      - name: List built APK
-        run: |
-          find app/build/outputs/apk -name "*.apk" -exec ls -la {} \;
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ludo-legends-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
-
-      - name: Upload build reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-reports
-          path: |
-            app/build/reports
-            build/reports
-          if-no-files-found: ignore
-          retention-days: 7

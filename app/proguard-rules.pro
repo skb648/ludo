@@ -1,3 +1,4 @@
-# Ludo Legends v5.0 — complete source sync · 2026-07-10
-# Add project specific ProGuard rules here.
--keep class com.ludolegends.game.** { *; }
+# Keep Compose runtime internals used via reflection
+-keep class androidx.compose.runtime.** { *; }
+-dontwarn kotlinx.coroutines.**
+-keepclassmembers class com.ludolegends.game.engine.** { *; }

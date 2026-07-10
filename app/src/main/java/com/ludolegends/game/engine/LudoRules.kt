@@ -1,219 +1,138 @@
-// Ludo Legends v5.0 — complete source sync · 2026-07-10
 package com.ludolegends.game.engine
 
-/**
- * Pure rule-checking functions implementing the authentic Ludo King rules.
- *
- * Every function here is side-effect free and operates on [LudoGameState]
- * snapshots. The [LudoEngine] delegates to these to compute legal moves,
- * captures, and turn transitions.
- *
- * The four rule pillars:
- *  1. UNLOCK SIX RULE            — see [canUnlock]
- *  2. THREE CONSECUTIVE SIXES    — see [shouldBurnTurn]
- *  3. SAFEZONE & ELIMINATION     — see [computeCapture]
- *  4. EXACT ROLL HOME ENTRY      — see [canMoveToHome]
- */
 object LudoRules {
+    val SAFE_ABSOLUTE_CELLS = setOf(0, 8, 13, 21, 26, 34, 39, 47)
 
-    /** Maximum number of consecutive sixes before the turn is burned. */
-    const val MAX_CONSECUTIVE_SIXES = 3
+    fun toAbsolute(color: PlayerColor, relativePos: Int): Int =
+        (color.startOffset + relativePos - 1).mod(52)
 
-    /**
-     * === RULE 1 — UNLOCK SIX RULE (UNBREAKABLE) ===
-     *
-     * A pawn inside the home base quadrant is locked and completely
-     * unclickable. It can only be deployed onto the active clockwise
-     * track index when the player inputs an exact physical dice value
-     * of '6'.
-     *
-     * Returns true iff the pawn at [token] is at BASE and [diceValue] == 6.
-     * The ViewModel/UI layer uses this to filter tap targets — a locked
-     * base token is NEVER added to [LudoGameState.selectableTokenIds].
-     */
-    fun canUnlock(token: Token, diceValue: Int): Boolean {
-        return token.isAtBase && diceValue == 6
-    }
+    fun isSafeCell(color: PlayerColor, relativePos: Int): Boolean =
+        relativePos in 1..51 && toAbsolute(color, relativePos) in SAFE_ABSOLUTE_CELLS
 
-    /**
-     * Strict gate used by [LudoEngine.prepareMove] to reject any attempt
-     * to move a BASE-locked token without a 6. Defensive — should never
-     * return true in normal flow because the UI also filters it.
-     */
-    fun isBaseLocked(token: Token, diceValue: Int): Boolean {
-        return token.isAtBase && diceValue != 6
-    }
-
-    /**
-     * === RULE 2 — THREE CONSECUTIVE SIXES INVALIDATION ===
-     *
-     * If the player has rolled [consecutiveSixes] 6s already, the next 6
-     * (the 3rd consecutive) invalidates the turn entirely. The 3rd roll
-     * is burned, the turn ends with a penalty, and control passes to the
-     * next player.
-     *
-     * Returns true if this roll (a 6) should burn the turn.
-     */
-    fun shouldBurnTurn(consecutiveSixes: Int, currentDiceValue: Int): Boolean {
-        return currentDiceValue == 6 && consecutiveSixes >= (MAX_CONSECUTIVE_SIXES - 1)
-    }
-
-    /**
-     * Compute the destination step index for [token] given [diceValue].
-     * Returns null when the move is illegal.
-     *
-     * Illegal cases (all unbreakable):
-     *  • Token at BASE and dice != 6 → cannot unlock (RULE 1).
-     *  • Token already HOME → no movement allowed.
-     *  • Move would overshoot HOME (stepIndex 57) → illegal (RULE 4).
-     *
-     * Legal cases:
-     *  • Token at BASE and dice == 6 → moves to stepIndex 0 (exit tile).
-     *  • Token on ring or home column → stepIndex + diceValue, if ≤ 57.
-     */
-    fun computeDestination(token: Token, diceValue: Int): Int? {
+    fun destinationFor(token: Token, dice: Int): Int? {
+        require(dice in 1..6) { "Dice must be 1..6, got $dice" }
+        if (token.isInBase) return if (dice == 6) 1 else null
         if (token.isHome) return null
-        // RULE 1 — locked base can ONLY be unlocked with a 6.
-        if (token.isAtBase) {
-            return if (diceValue == 6) 0 else null
+        return (token.pos + dice).takeIf { it <= Token.POS_HOME }
+    }
+
+    fun effectiveColorFor(state: GameState, seatIndex: Int): PlayerColor {
+        val seat = state.seats[seatIndex]
+        if (state.mode != GameMode.TEAM_2V2) return seat.color
+        if (state.tokensOf(seat.color).any { !it.isHome }) return seat.color
+        val mate = state.seats.firstOrNull { it.teamId == seat.teamId && it.color != seat.color }
+            ?: return seat.color
+        return if (state.tokensOf(mate.color).any { !it.isHome }) mate.color else seat.color
+    }
+
+    fun movableTokens(state: GameState, dice: Int): List<Token> =
+        state.tokensOf(effectiveColorFor(state, state.currentSeatIndex))
+            .filter { destinationFor(it, dice) != null }
+
+    data class DiceApplication(val state: GameState, val outcome: DiceOutcome)
+
+    fun applyDice(state: GameState, dice: Int): DiceApplication {
+        require(state.phase == TurnPhase.AWAIT_DICE) { "Dice not expected in ${state.phase}" }
+        require(dice in 1..6) { "Dice must be 1..6" }
+        val seat = state.currentSeat
+        val sixes = if (dice == 6) state.consecutiveSixes + 1 else 0
+        if (sixes >= 3) {
+            val next = advanceSeat(state)
+            return DiceApplication(
+                state.copy(currentSeatIndex = next, phase = TurnPhase.AWAIT_DICE, diceValue = null,
+                    consecutiveSixes = 0, movableTokenIds = emptyList(),
+                    statusMessage = "Three sixes! ${seat.name}'s roll is void — ${state.seats[next].name}'s turn."),
+                DiceOutcome.TripleSixPenalty
+            )
         }
-        // RULE 4 — exact roll required to reach home terminal (stepIndex 57).
-        val newStep = token.stepIndex + diceValue
-        if (newStep > Token.HOME) return null
-        return newStep
-    }
-
-    /**
-     * Returns true if [token] can legally be moved by [diceValue] under
-     * the current state. The UI uses this to highlight selectable tokens.
-     */
-    fun isLegalMove(state: LudoGameState, token: Token, diceValue: Int): Boolean {
-        if (state.phase != TurnPhase.AWAITING_TOKEN_PICK) return false
-        if (token.ownerId != state.currentPlayer) return false
-        if (token.isHome) return false
-        return computeDestination(token, diceValue) != null
-    }
-
-    /**
-     * Compute the set of tokens of the given [player] that can legally
-     * be moved with [diceValue]. Empty when no move is possible (in which
-     * case the engine will auto-pass the turn).
-     *
-     * The [player] parameter is overridable so that in 2v2 team mode,
-     * when the current player has all 4 pawns home, the engine can
-     * compute legal moves against the teammate instead (turn redirection).
-     */
-    fun legalTokenIdsFor(
-        state: LudoGameState,
-        player: Player,
-        diceValue: Int
-    ): Set<Pair<Player, Int>> {
-        val tokens = state.tokens[player].orEmpty()
-        return tokens.mapIndexedNotNull { idx, token ->
-            if (token.isHome) return@mapIndexedNotNull null
-            val dest = computeDestination(token, diceValue) ?: return@mapIndexedNotNull null
-            // Validate the destination isn't blocked by a teammate stack of 2+
-            // (Standard Ludo King allows stacking; we always allow it.)
-            Pair(player, idx) to dest
-        }.map { it.first }.toSet()
-    }
-
-    /**
-     * Compute the set of tokens of the current player that can legally
-     * be moved with [diceValue]. Empty when no move is possible (in which
-     * case the engine will auto-pass the turn).
-     */
-    fun legalTokenIds(state: LudoGameState, diceValue: Int): Set<Pair<Player, Int>> {
-        return legalTokenIdsFor(state, state.currentPlayer, diceValue)
-    }
-
-    /**
-     * === RULE 3 — SAFEZONE STAR EXTRACTION & ELIMINATION ===
-     * === SECTION 4 — TEAMMATE SAFETY (2v2 mode) ===
-     *
-     * After a pawn lands on a cell, check for opponent tokens on the same
-     * absolute ring index. Captures are blocked when:
-     *   • Destination is a safe cell (star/exit) — pieces stack.
-     *   • The opposing token is a teammate (2v2 team mode).
-     *
-     * On a non-safe cell with a true opponent, the opponent is eliminated
-     * (sent back to BASE) and the active player earns a bonus roll.
-     *
-     * Returns the list of (opponent, tokenId) pairs that get captured.
-     * Returns empty list when landing on a safe cell or no opponents present.
-     */
-    fun computeCapture(
-        state: LudoGameState,
-        movingPlayer: Player,
-        tokenId: Int,
-        destinationStep: Int
-    ): List<Pair<Player, Int>> {
-        if (destinationStep < 0 || destinationStep > Token.HOME_COLUMN_END) return emptyList()
-
-        val absoluteRing = if (destinationStep in 0..51) {
-            (movingPlayer.startIndex + destinationStep) % 52
-        } else {
-            return emptyList()
+        val movable = movableTokens(state, dice)
+        if (movable.isEmpty()) {
+            val next = advanceSeat(state)
+            return DiceApplication(
+                state.copy(currentSeatIndex = next, diceValue = null, consecutiveSixes = 0,
+                    movableTokenIds = emptyList(), statusMessage = "${seat.name} rolled $dice — no legal move. ${state.seats[next].name}'s turn."),
+                DiceOutcome.NoMoves
+            )
         }
+        val ids = movable.map { it.id }
+        return DiceApplication(
+            state.copy(phase = TurnPhase.AWAIT_MOVE, diceValue = dice, consecutiveSixes = sixes,
+                movableTokenIds = ids, statusMessage = if (ids.size == 1) "${seat.name} rolled $dice — moving pawn." else "${seat.name} rolled $dice — tap a glowing pawn."),
+            DiceOutcome.ChooseMove(ids)
+        )
+    }
 
-        // Safe cells block all captures — pieces stack.
-        if (SafeCells.isSafe(absoluteRing)) return emptyList()
-
-        val captured = mutableListOf<Pair<Player, Int>>()
-        for (player in state.turnOrder) {
-            if (player == movingPlayer) continue
-            // === SECTION 4 — Teammate safety ===
-            // In team mode (2v2), teammates cannot capture each other.
-            val isTeamMode = state.gameMode == GameMode.TEAM_2V2
-            if (isTeamMode && Player.isTeammate(movingPlayer, player)) continue
-            for ((idx, token) in state.tokens[player].orEmpty().withIndex()) {
-                if (!token.isOnRing) continue
-                if (token.absoluteRingIndex() == absoluteRing) {
-                    captured += Pair(player, idx)
-                }
+    fun applyMove(state: GameState, tokenId: Int): MoveResolution {
+        require(state.phase == TurnPhase.AWAIT_MOVE)
+        val dice = requireNotNull(state.diceValue)
+        require(tokenId in state.movableTokenIds)
+        val token = state.token(tokenId)
+        val dest = requireNotNull(destinationFor(token, dice))
+        val path = if (token.isInBase) listOf(1) else (token.pos + 1..dest).toList()
+        val captured = if (dest in 1..51 && !isSafeCell(token.color, dest)) {
+            val absolute = toAbsolute(token.color, dest)
+            state.tokens.filter { other ->
+                other.color != token.color && other.isOnMainTrack &&
+                    !isTeammate(state, token.color, other.color) &&
+                    toAbsolute(other.color, other.pos) == absolute
+            }.map { it.id }
+        } else emptyList()
+        val moved = state.tokens.map {
+            when {
+                it.id == tokenId -> it.copy(pos = dest)
+                it.id in captured -> it.copy(pos = Token.POS_BASE)
+                else -> it
             }
         }
-        return captured
+        val home = dest == Token.POS_HOME
+        val scores = state.scores.toMutableMap().apply {
+            this[token.color] = (this[token.color] ?: 0) + captured.size * 5 + if (home) 25 else 0
+        }
+        val colorDone = moved.count { it.color == token.color && it.isHome } == 4
+        val finished = if (colorDone && token.color !in state.finishedColors) state.finishedColors + token.color else state.finishedColors
+        val winner = when {
+            !colorDone -> null
+            state.mode == GameMode.STANDARD -> token.color
+            else -> {
+                val team = state.seats.filter { it.teamId == state.currentSeat.teamId }
+                if (team.all { s -> moved.filter { it.color == s.color }.all(Token::isHome) }) token.color else null
+            }
+        }
+        val extra = winner == null && (dice == 6 || captured.isNotEmpty() || home)
+        val next = if (extra || winner != null) state.currentSeatIndex else advanceSeat(state.copy(tokens = moved, finishedColors = finished))
+        val message = when {
+            winner != null && state.mode == GameMode.TEAM_2V2 -> "${state.currentSeat.name}'s team wins!"
+            winner != null -> "${state.currentSeat.name} wins the match!"
+            colorDone && state.mode == GameMode.TEAM_2V2 -> "${token.color.displayName} is home! Now drive your teammate's pawns."
+            home -> "Pawn reached HOME! Bonus roll."
+            captured.isNotEmpty() -> "Opponent captured! Bonus roll."
+            extra -> "Six rolled — roll again!"
+            else -> "${state.seats[next].name}'s turn — roll the dice"
+        }
+        val resolved = state.copy(tokens = moved, currentSeatIndex = next,
+            phase = if (winner != null) TurnPhase.FINISHED else TurnPhase.AWAIT_DICE,
+            diceValue = null, consecutiveSixes = if (extra) state.consecutiveSixes else 0,
+            movableTokenIds = emptyList(), finishedColors = finished, scores = scores, statusMessage = message)
+        return MoveResolution(resolved, path, captured, home, extra, winner)
     }
 
-    /**
-     * === RULE 4 — EXACT ROLL HOME ENTRY ===
-     *
-     * Returns true iff the move would land the token exactly on the
-     * terminal home step (stepIndex == 57). Overshoot is illegal.
-     */
-    fun canMoveToHome(token: Token, diceValue: Int): Boolean {
-        if (token.isAtBase) return false
-        val dest = token.stepIndex + diceValue
-        return dest == Token.HOME
+    fun isTeammate(state: GameState, a: PlayerColor, b: PlayerColor): Boolean {
+        if (state.mode != GameMode.TEAM_2V2) return false
+        val sa = state.seats.firstOrNull { it.color == a } ?: return false
+        val sb = state.seats.firstOrNull { it.color == b } ?: return false
+        return sa.teamId == sb.teamId
     }
 
-    /**
-     * Returns true if the current player must roll again (bonus roll)
-     * given the outcome of this move. Bonus triggers:
-     *   • Dice value was 6 (and not the third consecutive 6)
-     *   • At least one opponent was captured
-     *   • A pawn reached home on this move
-     */
-    fun shouldGrantBonusRoll(
-        diceValue: Int,
-        capturedCount: Int,
-        reachedHome: Boolean,
-        consecutiveSixes: Int
-    ): Boolean {
-        if (shouldBurnTurn(consecutiveSixes, diceValue)) return false
-        if (diceValue == 6) return true
-        if (capturedCount > 0) return true
-        if (reachedHome) return true
-        return false
-    }
-
-    /**
-     * Computes the next player index after a turn ends. Used when the
-     * active player cannot move or has exhausted their bonus rolls.
-     */
-    fun nextPlayerIndex(state: LudoGameState): Int {
-        val next = (state.currentPlayerIndex + 1) % state.turnOrder.size
-        return next
+    private fun advanceSeat(state: GameState): Int {
+        var idx = state.currentSeatIndex
+        repeat(state.seats.size) {
+            idx = (idx + 1) % state.seats.size
+            val seat = state.seats[idx]
+            val skip = if (state.mode == GameMode.TEAM_2V2) {
+                state.seats.filter { it.teamId == seat.teamId }.all { s -> state.tokensOf(s.color).all(Token::isHome) }
+            } else seat.color in state.finishedColors
+            if (!skip) return idx
+        }
+        return (state.currentSeatIndex + 1) % state.seats.size
     }
 }
