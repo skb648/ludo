@@ -1,3 +1,4 @@
+// Ludo Legends v5.0 — complete source sync · 2026-07-10
 package com.ludolegends.game.ui.theme
 
 import androidx.compose.material3.Typography

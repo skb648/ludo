@@ -1,3 +1,4 @@
+// Ludo Legends v5.0 — complete source sync · 2026-07-10
 // Top-level build file
 plugins {
     id("com.android.application") version "8.5.2" apply false

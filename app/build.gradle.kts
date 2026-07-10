@@ -1,3 +1,4 @@
+// Ludo Legends v5.0 — complete source sync · 2026-07-10
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -13,8 +14,8 @@ android {
         applicationId = "com.ludolegends.game"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 5
+        versionName = "5.0.0"
         vectorDrawables { useSupportLibrary = true }
     }
 

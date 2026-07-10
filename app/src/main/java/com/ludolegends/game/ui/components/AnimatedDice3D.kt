@@ -1,3 +1,4 @@
+// Ludo Legends v5.0 — complete source sync · 2026-07-10
 package com.ludolegends.game.ui.components
 
 import androidx.compose.animation.core.Animatable
